@@ -13,15 +13,27 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Sync pacman DB and install keyring
+      - name: Install gnupg and arch keyring and initialize pacman keys
         run: |
-          pacman -Syu --noconfirm
-          pacman -S --noconfirm archlinux-keyring
-          pacman-key --init
-          pacman-key --populate archlinux
+          set -euo pipefail
+          # Install gnupg and the keyring package so pacman-key can run
+          pacman -Sy --noconfirm --noprogressbar gnupg archlinux-keyring || true
+
+          # Initialize and populate pacman keyring. In CI this can be flaky due to low entropy;
+          # allow these to fail non-fatally and continue to refresh DB below.
+          pacman-key --init || true
+          pacman-key --populate archlinux || true
+
+          # Refresh package database after keyring/populate
+          pacman -Sy --noconfirm --noprogressbar
+
+      - name: Sync pacman DB and upgrade system
+        run: |
+          pacman -Syu --noconfirm --noprogressbar
 
       - name: Install required packages (if available)
         run: |
+          set -euo pipefail
           # base-devel is required for makepkg
           PKGS="base-devel git clang cmake ninja ispc ffmpeg openal sdl2 glu vulkan-headers vulkan-icd-loader mesa python"
           for p in $PKGS; do
@@ -43,14 +55,19 @@ jobs:
 
       - name: Create build user (makepkg must NOT run as root)
         run: |
+          set -euo pipefail
           useradd -m builder
-          chown -R builder:builder /github/workspace
+          # Ensure the GitHub workspace exists inside the container and is owned by builder
+          WORKSPACE="${GITHUB_WORKSPACE:-/github/workspace}"
+          mkdir -p "$WORKSPACE"
+          chown -R builder:builder "$WORKSPACE"
 
       - name: Run makepkg (build the package)
         run: |
-          cd /github/workspace
-          # run as the non-root 'builder' user
-          su builder -c "makepkg -s --noconfirm --skippgpcheck"
+          set -euo pipefail
+          WORKSPACE="${GITHUB_WORKSPACE:-/github/workspace}"
+          # run as the non-root 'builder' user; ensure we run in the workspace
+          su builder -c "cd '$WORKSPACE' && makepkg -s --noconfirm --skippgpcheck"
         env:
           # ensure git submodules can be fetched if your PKGBUILD relies on network
           GIT_SSL_NO_VERIFY: "false"
