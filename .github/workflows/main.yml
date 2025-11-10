@@ -1,0 +1,66 @@
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-arch-pkg:
+    name: Build Arch package with makepkg
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Sync pacman DB and install keyring
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm archlinux-keyring
+          pacman-key --init
+          pacman-key --populate archlinux
+
+      - name: Install required packages (if available)
+        run: |
+          # base-devel is required for makepkg
+          PKGS="base-devel git clang cmake ninja ispc ffmpeg openal sdl2 glu vulkan-headers vulkan-icd-loader mesa python"
+          for p in $PKGS; do
+            if pacman -Si "$p" >/dev/null 2>&1; then
+              pacman -S --noconfirm --needed "$p"
+            else
+              echo "Package $p not found in repos; skipping"
+            fi
+          done
+
+          # directx shader compiler package name may vary between 'directx-shader-compiler' and 'dxc'
+          if pacman -Si directx-shader-compiler >/dev/null 2>&1; then
+            pacman -S --noconfirm --needed directx-shader-compiler
+          elif pacman -Si dxc >/dev/null 2>&1; then
+            pacman -S --noconfirm --needed dxc
+          else
+            echo "DXC not in repos; if you need it, install it manually or add an AUR step"
+          fi
+
+      - name: Create build user (makepkg must NOT run as root)
+        run: |
+          useradd -m builder
+          chown -R builder:builder /github/workspace
+
+      - name: Run makepkg (build the package)
+        run: |
+          cd /github/workspace
+          # run as the non-root 'builder' user
+          su builder -c "makepkg -s --noconfirm --skippgpcheck"
+        env:
+          # ensure git submodules can be fetched if your PKGBUILD relies on network
+          GIT_SSL_NO_VERIFY: "false"
+
+      - name: Upload built package artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arch-packages
+          path: |
+            *.pkg.tar.zst
+            *.pkg.tar.xz
+            *.pkg.tar.gz
