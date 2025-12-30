@@ -20,15 +20,6 @@ jobs:
     env:
       BUILD_TYPE: Release
     steps:
-      - name: Install Git first
-        run: |
-          pacman -Sy --noconfirm git
-
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
       - name: Update pacman keys and system
         run: |
           set -eux
@@ -42,6 +33,11 @@ jobs:
           set -eux
           pacman -S --noconfirm --needed base-devel cmake git wget unzip sdl2 openal ffmpeg vulkan-icd-loader vulkan-headers \
             libx11 libxrandr libxi libxcursor libxinerama libxss alsa-lib libsndfile zlib ispc
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: (Optional) Download DirectXShaderCompiler (dxc)
         run: |
