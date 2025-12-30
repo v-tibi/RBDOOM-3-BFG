@@ -41,7 +41,7 @@ jobs:
         run: |
           set -eux
           pacman -S --noconfirm --needed base-devel cmake git wget unzip sdl2 openal ffmpeg vulkan-icd-loader vulkan-headers \
-            libx11 libxrandr libxi libxcursor libxinerama libxss alsa-lib libsndfile zlib
+            libx11 libxrandr libxi libxcursor libxinerama libxss alsa-lib libsndfile zlib ispc
 
       - name: (Optional) Download DirectXShaderCompiler (dxc)
         run: |
