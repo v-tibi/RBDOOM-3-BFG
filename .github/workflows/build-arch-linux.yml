@@ -1,0 +1,135 @@
+name: Build RBDOOM-3-BFG for Arch Linux x86_64
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+
+jobs:
+  build-arch:
+    name: Build (Arch Linux x86_64)
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+    env:
+      BUILD_TYPE: Release
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update pacman keys and system
+        run: |
+          set -eux
+          pacman -S --noconfirm archlinux-keyring || true
+          pacman -Syu --noconfirm
+
+      - name: Install build dependencies
+        run: |
+          set -eux
+          pacman -S --noconfirm --needed base-devel cmake git wget unzip sdl2 ispc openal ffmpeg vulkan-icd-loader vulkan-headers \
+            libx11 libxrandr libxi libxcursor libxinerama libxss alsa-lib libsndfile zlib
+
+      - name: (Optional) Download DirectXShaderCompiler (dxc)
+        run: |
+          set -eux
+          # Try to download a DXC release; if unavailable continue (dxc is optional)
+          DXC_VER="v1.8.2405"
+          ASSET="linux_dxc_2024_05_24.x86_64.tar.gz"
+          # The asset name varies by release; attempt a best-effort download
+          URL="https://github.com/microsoft/DirectXShaderCompiler/releases/download/${DXC_VER}/${ASSET}"
+          if wget -q --tries=3 --timeout=30 -O /tmp/dxc.tar.gz "$URL"; then
+            mkdir -p /opt/dxc
+            tar -C /opt/dxc -xzf /tmp/dxc.tar.gz || true
+            # add /opt/dxc/bin to PATH for this run if a dxc binary was found
+            if [ -x /opt/dxc/bin/dxc ]; then
+              chmod +x /opt/dxc/bin/dxc
+              echo "DXC installed to /opt/dxc/bin"
+              export PATH="/opt/dxc/bin:$PATH"
+            else
+              echo "dxc not found in /opt/dxc/bin, continuing without dxc"
+            fi
+          else
+            echo "DXC download failed or not available, continuing without dxc"
+          fi
+
+      - name: Prepare build (CMake)
+        run: |
+          set -eux
+          cd neo
+          chmod +x cmake-linux-release.sh || true
+          # Prefer the provided helper script; if it fails, fall back to an explicit cmake call
+          if ./cmake-linux-release.sh; then
+            echo "cmake configuration succeeded using helper script"
+          else
+            echo "cmake helper failed, trying fallback configuration"
+            mkdir -p build
+            cd build
+            # Try usual config; adjust flags as needed (FFMPEG, BINKDEC, USE_VULKAN)
+            cmake .. -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DUSE_VULKAN=ON || cmake .. -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DUSE_VULKAN=OFF -DFFMPEG=OFF -DBINKDEC=ON
+
+      - name: Build
+        run: |
+          set -eux
+          # many repo layouts place generated build files under neo/build
+          if [ -d neo/build ]; then
+            cd neo/build
+          elif [ -d build ]; then
+            cd build
+          else
+            cd neo || true
+          fi
+          # prefer make if present, otherwise use cmake --build
+          if [ -f Makefile ]; then
+            make -j$(nproc)
+          else
+            cmake --build . -- -j$(nproc)
+          fi
+
+      - name: Collect binaries and artifacts
+        run: |
+          set -eux
+          mkdir -p release-artifact
+          # known possible binary locations (adjust if your build produces different names/paths)
+          candidates=(
+            "neo/build/RBDoom3BFG"
+            "neo/build/RBDoom3BFG.x86_64"
+            "neo/build/RBDoom3BFG_${BUILD_TYPE}"
+            "build/RBDoom3BFG"
+            "build/RBDoom3BFG.x86_64"
+            "neo/RBDoom3BFG"
+            "RBDoom3BFG"
+          )
+          for f in "${candidates[@]}"; do
+            if [ -f "$f" ]; then
+              cp "$f" release-artifact/ || true
+            fi
+          done
+          # collect libraries / runtime files if present (helpful for debugging)
+          if [ -d neo/build ]; then
+            tar -C neo -czf release-artifact/build-tree.tar.gz build || true
+          elif [ -d build ]; then
+            tar -czf release-artifact/build-tree.tar.gz build || true
+          else
+            # if nothing found, tar the neo directory
+            tar -czf release-artifact/source-tree.tar.gz neo || true
+          fi
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rbd3bfg-linux-x86_64
+          path: release-artifact
+          retention-days: 7
+
+      - name: Note
+        run: |
+          echo "Notes:"
+          echo "- This workflow runs inside an Arch Linux container. The produced binary should be compatible with x86_64 Arch Linux systems if runtime dependencies are present."
+          echo "- The engine requires the game's 'base/' data (not included here). Copy that to the runtime location before running the binary."
+          echo "- If the build needs a specific DXC binary, Vulkan SDK, or additional libraries, add explicit download/install steps."
