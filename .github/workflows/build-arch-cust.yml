@@ -48,7 +48,7 @@ jobs:
           make -j$(nproc)
 
       - name: Prepare artifacts
-        run: cp neo/build/RBDoom3BFG ./
+        run: cp build/RBDoom3BFG ./
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -58,4 +58,4 @@ jobs:
             .
             !.git
             !.github
-            !neo/build
+            !build
