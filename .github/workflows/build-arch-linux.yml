@@ -25,7 +25,6 @@ jobs:
           set -eux
           pacman-key --init
           pacman-key --populate archlinux
-          pacman -Sy --noconfirm archlinux-keyring
           pacman -Syu --noconfirm
 
       - name: Install build dependencies
