@@ -23,7 +23,7 @@ jobs:
           pacman-key --init
           pacman-key --populate archlinux
           pacman -Syu --noconfirm
-          pacman -S --noconfirm --needed base-devel cmake wget git sdl2 openal ffmpeg vulkan-icd-loader vulkan-headers \
+          pacman -S --noconfirm --needed base-devel cmake git wget sdl2 openal ffmpeg vulkan-icd-loader vulkan-headers \
             libx11 libxrandr libxi libxcursor libxinerama libxss alsa-lib libsndfile zlib ispc
 
       - name: Checkout
@@ -44,7 +44,7 @@ jobs:
           cd neo
           chmod +x cmake-linux-release.sh
           ./cmake-linux-release.sh
-          cd build
+          cd ../build
           make -j$(nproc)
 
       - name: Prepare artifacts
