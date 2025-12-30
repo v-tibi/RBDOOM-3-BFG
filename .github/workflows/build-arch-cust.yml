@@ -31,6 +31,14 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Download DirectXShaderCompiler
+        run: |
+          wget -q https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.8.2405/linux_dxc_2024_05_24.x86_64.tar.gz
+          mkdir -p /opt/dxc
+          tar -C /opt/dxc -xzf linux_dxc_2024_05_24.x86_64.tar.gz
+          chmod +x /opt/dxc/bin/dxc
+          echo "/opt/dxc/bin" >> $GITHUB_PATH
+
       - name: Build
         run: |
           cd neo
