@@ -1,0 +1,53 @@
+name: Build RBDOOM-3-BFG for Arch Linux x86_64
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+
+jobs:
+  build-arch:
+    name: Build (Arch Linux x86_64)
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+    steps:
+      - name: Update system and install dependencies
+        run: |
+          pacman-key --init
+          pacman-key --populate archlinux
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm --needed base-devel cmake git sdl2 openal ffmpeg vulkan-icd-loader vulkan-headers \
+            libx11 libxrandr libxi libxcursor libxinerama libxss alsa-lib libsndfile zlib ispc
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build
+        run: |
+          cd neo
+          chmod +x cmake-linux-release.sh
+          ./cmake-linux-release.sh
+          cd build
+          make -j$(nproc)
+
+      - name: Prepare artifacts
+        run: cp neo/build/RBDoom3BFG ./
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rbdoom3bfg-linux-x86_64
+          path: |
+            .
+            !.git
+            !.github
+            !neo/build
