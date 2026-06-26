@@ -1,83 +1,63 @@
+name: Build RBDOOM-3-BFG for Linux x86_64
 on:
+  workflow_dispatch: {}
   push:
-    branches: [ main ]
-  workflow_dispatch:
-
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
 jobs:
-  build-arch-pkg:
-    name: Build Arch package with makepkg
-    runs-on: ubuntu-latest
-    container:
-      image: archlinux:latest
+  build:
+    name: Build (Ubuntu 24.04 / GCC 13)
+    runs-on: ubuntu-24.04
     steps:
-      - name: Checkout repository
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake git wget \
+            gcc-13 g++-13 \
+            libsdl2-dev libopenal-dev \
+            libavcodec-dev libavformat-dev libavutil-dev libswscale-dev \
+            libvulkan-dev libncurses-dev \
+            zlib1g-dev ispc
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 130
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 130
+
+      - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-      - name: Install gnupg and arch keyring and initialize pacman keys
+      - name: Download DirectXShaderCompiler
         run: |
-          set -euo pipefail
-          # Install gnupg and the keyring package so pacman-key can run
-          pacman -Sy --noconfirm --noprogressbar gnupg archlinux-keyring || true
+          wget -q https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.8.2405/linux_dxc_2024_05_24.x86_64.tar.gz
+          mkdir -p /opt/dxc
+          tar -C /opt/dxc -xzf linux_dxc_2024_05_24.x86_64.tar.gz
+          chmod +x /opt/dxc/bin/dxc
+          echo "/opt/dxc/bin" >> $GITHUB_PATH
 
-          # Initialize and populate pacman keyring. In CI this can be flaky due to low entropy;
-          # allow these to fail non-fatally and continue to refresh DB below.
-          pacman-key --init || true
-          pacman-key --populate archlinux || true
-
-          # Refresh package database after keyring/populate
-          pacman -Sy --noconfirm --noprogressbar
-
-      - name: Sync pacman DB and upgrade system
+      - name: Build
         run: |
-          pacman -Syu --noconfirm --noprogressbar
+          cd neo
+          chmod +x cmake-linux-release.sh
+          ./cmake-linux-release.sh
+          cd ../build
+          make -j$(nproc)
 
-      - name: Install required packages (if available)
-        run: |
-          set -euo pipefail
-          # base-devel is required for makepkg
-          PKGS="base-devel git clang cmake ninja ispc ffmpeg openal sdl2 glu vulkan-headers vulkan-icd-loader mesa python"
-          for p in $PKGS; do
-            if pacman -Si "$p" >/dev/null 2>&1; then
-              pacman -S --noconfirm --needed "$p"
-            else
-              echo "Package $p not found in repos; skipping"
-            fi
-          done
+      - name: Prepare artifacts
+        run: cp build/RBDoom3BFG ./
 
-          # directx shader compiler package name may vary between 'directx-shader-compiler' and 'dxc'
-          if pacman -Si directx-shader-compiler >/dev/null 2>&1; then
-            pacman -S --noconfirm --needed directx-shader-compiler
-          elif pacman -Si dxc >/dev/null 2>&1; then
-            pacman -S --noconfirm --needed dxc
-          else
-            echo "DXC not in repos; if you need it, install it manually or add an AUR step"
-          fi
-
-      - name: Create build user (makepkg must NOT run as root)
-        run: |
-          set -euo pipefail
-          useradd -m builder
-          # Ensure the GitHub workspace exists inside the container and is owned by builder
-          WORKSPACE="${GITHUB_WORKSPACE:-/github/workspace}"
-          mkdir -p "$WORKSPACE"
-          chown -R builder:builder "$WORKSPACE"
-
-      - name: Run makepkg (build the package)
-        run: |
-          set -euo pipefail
-          WORKSPACE="${GITHUB_WORKSPACE:-/github/workspace}"
-          # run as the non-root 'builder' user; ensure we run in the workspace
-          su builder -c "cd '$WORKSPACE' && makepkg -s --noconfirm --skippgpcheck"
-        env:
-          # ensure git submodules can be fetched if your PKGBUILD relies on network
-          GIT_SSL_NO_VERIFY: "false"
-
-      - name: Upload built package artifact
-        if: always()
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: arch-packages
+          name: rbdoom3bfg-linux-x86_64
           path: |
-            *.pkg.tar.zst
-            *.pkg.tar.xz
-            *.pkg.tar.gz
+            .
+            !.git
+            !.github
+            !build
+            !neo
