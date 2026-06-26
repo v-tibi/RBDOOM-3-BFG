@@ -26,7 +26,7 @@ jobs:
           mkdir build
           cd build
           
-          # Fixed: Switched from kabylake to skylake. Clang optimizes 8th-gen Kaby Lake R using the skylake target.
+          # Added -DBINKDEC=OFF to resolve the conflict with -DFFMPEG=ON
           cmake ../neo \
             -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
@@ -36,6 +36,7 @@ jobs:
             -DCMAKE_CXX_FLAGS="-march=skylake -O3" \
             -DVULKAN=ON \
             -DFFMPEG=ON \
+            -DBINKDEC=OFF \
             -DOPENAL=ON \
             -DCMAKE_INSTALL_PREFIX=../dist
 
