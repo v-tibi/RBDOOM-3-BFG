@@ -1,5 +1,4 @@
 name: Build RBDOOM-3-BFG for Arch Linux x86_64
-
 on:
   workflow_dispatch: {}
   push:
@@ -10,28 +9,23 @@ on:
     branches:
       - main
       - master
-env:
-  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true  
 jobs:
-  build-arch:
-    name: Build (Arch Linux x86_64)
-    runs-on: ubuntu-latest
-    container:
-      image: archlinux:latest
+  build:
+    name: Build (Ubuntu 24.04 x86_64)
+    runs-on: ubuntu-24.04
     steps:
-      - name: Update system and install dependencies
+      - name: Install dependencies
         run: |
-          pacman-key --init
-          pacman-key --populate archlinux
-          pacman -Syu --noconfirm
-          pacman -S --noconfirm --needed base-devel cmake git wget sdl2 openal ffmpeg vulkan-icd-loader vulkan-headers \
-            libx11 libxrandr libxi libxcursor libxinerama libxss alsa-lib libsndfile zlib ispc
-
+          sudo apt-get update
+          sudo apt-get install -y cmake git wget build-essential \
+            libsdl2-dev libopenal-dev libavcodec-dev libavformat-dev \
+            libavutil-dev libswscale-dev libvulkan-dev vulkan-validationlayers-dev \
+            libx11-dev libxrandr-dev libxi-dev libxcursor-dev libxinerama-dev \
+            libxss-dev libasound2-dev libsndfile1-dev zlib1g-dev ispc
       - name: Checkout
         uses: actions/checkout@v4
         with:
           submodules: recursive
-
       - name: Download DirectXShaderCompiler
         run: |
           wget -q https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.8.2405/linux_dxc_2024_05_24.x86_64.tar.gz
@@ -39,24 +33,15 @@ jobs:
           tar -C /opt/dxc -xzf linux_dxc_2024_05_24.x86_64.tar.gz
           chmod +x /opt/dxc/bin/dxc
           echo "/opt/dxc/bin" >> $GITHUB_PATH
-
       - name: Build
         run: |
           cd neo
           chmod +x cmake-linux-release.sh
           ./cmake-linux-release.sh
           cd ../build
-          make -j1
-
-      - name: Prepare artifacts
-        run: cp build/RBDoom3BFG ./
-
+          make -j$(nproc) RBDoom3BFG
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: rbdoom3bfg-linux-x86_64
-          path: |
-            .
-            !.git
-            !.github
-            !build
+          path: build/RBDoom3BFG
