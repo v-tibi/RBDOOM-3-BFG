@@ -33,12 +33,21 @@ jobs:
           libcurl4-openssl-dev \
           libncurses-dev
     
+    - name: Download and install ISPC compiler
+      run: |
+        wget -q https://github.com/ispc/ispc/releases/download/v1.31.0/ispc-v1.31.0-linux.tar.gz
+        tar -xzf ispc-v1.31.0-linux.tar.gz
+        sudo cp ispc-v1.31.0-linux/bin/ispc /usr/local/bin/
+        sudo chmod +x /usr/local/bin/ispc
+        ispc --version
+    
     - name: Download DXC for Vulkan support
       run: |
         wget -q https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.8.2405/linux_dxc_2024_05_24.x86_64.tar.gz
         tar -xzf linux_dxc_2024_05_24.x86_64.tar.gz
         sudo cp bin/dxc /usr/local/bin/
         sudo chmod +x /usr/local/bin/dxc
+        dxc --version
     
     - name: Configure CMake
       run: |
