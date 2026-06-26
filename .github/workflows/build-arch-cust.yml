@@ -1,4 +1,4 @@
-name: Build RBDOOM-3-BFG for Arch Linux x86_64
+name: Build RBDOOM-3-BFG for Arch Linux x86_64 up
 
 on:
   workflow_dispatch: {}
