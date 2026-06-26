@@ -1,8 +1,6 @@
 name: Build RBDOOM-3-BFG
 
 on:
-  push:
-    branches: [ master, main ]
   workflow_dispatch:
 
 jobs:
