@@ -39,24 +39,19 @@ jobs:
         tar -xzf ispc-v1.31.0-linux.tar.gz
         sudo cp ispc-v1.31.0-linux/bin/ispc /usr/local/bin/
         sudo chmod +x /usr/local/bin/ispc
-        ispc --version
     
     - name: Download DXC for Vulkan support
       run: |
         wget -q https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.8.2405/linux_dxc_2024_05_24.x86_64.tar.gz
         tar -xzf linux_dxc_2024_05_24.x86_64.tar.gz
-        # Copy binary
         sudo cp bin/dxc /usr/local/bin/
         sudo chmod +x /usr/local/bin/dxc
-        # Copy shared library
         if [ -f lib/libdxcompiler.so ]; then
           sudo cp lib/libdxcompiler.so /usr/local/lib/
         elif [ -f bin/libdxcompiler.so ]; then
           sudo cp bin/libdxcompiler.so /usr/local/lib/
         fi
-        # Update library cache
         sudo ldconfig
-        dxc --version
     
     - name: Configure CMake
       run: |
@@ -73,7 +68,6 @@ jobs:
           -DUSE_DX12=OFF \
           -DDOOM_CLASSIC=ON \
           -DUSE_PRECOMPILED_HEADERS=ON \
-          -DCPU_OPTIMIZATION="-mmmx -msse -msse2 -msse3 -mssse3 -msse4.1 -msse4.2 -mavx -mavx2 -mfma -mbmi -mbmi2" \
           neo
     
     - name: Build
@@ -91,18 +85,6 @@ jobs:
         
         # Copy base directory (game data, configs, scripts)
         cp -r base RBDOOM-3-BFG-linux-x86_64/
-        
-        # Convert language files to ASCII (remove non-ASCII characters)
-        # The engine requires strict ASCII for .lang files
-        find RBDOOM-3-BFG-linux-x86_64/base/strings -name "*.lang" -type f | while read file; do
-          echo "Converting $file to ASCII..."
-          iconv -f UTF-8 -t ASCII//TRANSLIT//IGNORE "$file" > "$file.tmp" && mv "$file.tmp" "$file"
-        done
-        
-        # Remove debug files if any exist
-        find RBDOOM-3-BFG-linux-x86_64 -name "*.pdb" -delete 2>/dev/null || true
-        find RBDOOM-3-BFG-linux-x86_64 -name "*.map" -delete 2>/dev/null || true
-        find RBDOOM-3-BFG-linux-x86_64 -name "*.gch" -delete 2>/dev/null || true
         
         # Create archive
         tar -czf RBDOOM-3-BFG-linux-x86_64.tar.gz RBDOOM-3-BFG-linux-x86_64
