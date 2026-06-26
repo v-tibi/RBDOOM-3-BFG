@@ -12,9 +12,9 @@ jobs:
     steps:
       - name: Update System and Install Build Dependencies
         run: |
-          # Initialize pacman keyring and install packages needed for compilation
+          # Added 'directx-shader-compiler' to provide the required DXC binary
           pacman -Syu --noconfirm
-          pacman -S --noconfirm git cmake clang ninja ispc sdl2 openal ffmpeg vulkan-headers
+          pacman -S --noconfirm git cmake clang ninja ispc sdl2 openal ffmpeg vulkan-headers directx-shader-compiler
 
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -26,7 +26,6 @@ jobs:
           mkdir build
           cd build
           
-          # Added -DBINKDEC=OFF to resolve the conflict with -DFFMPEG=ON
           cmake ../neo \
             -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
