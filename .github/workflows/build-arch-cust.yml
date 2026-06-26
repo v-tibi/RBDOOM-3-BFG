@@ -10,7 +10,8 @@ on:
     branches:
       - main
       - master
-
+env:
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true  
 jobs:
   build-arch:
     name: Build (Arch Linux x86_64)
