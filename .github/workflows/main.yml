@@ -1,4 +1,95 @@
-name: Build RBDOOM-3-BFG for Linux x86_64
+name: Build RBDOOM-3-BFG
+
+on:
+  push:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          ninja-build \
+          git \
+          libgl1-mesa-dev \
+          libvulkan-dev \
+          libsdl2-dev \
+          libopenal-dev \
+          zlib1g-dev \
+          libpng-dev \
+          libjpeg-dev \
+          libglew-dev \
+          libfreetype6-dev \
+          libcurl4-openssl-dev \
+          libncurses-dev
+    
+    - name: Download DXC for Vulkan support
+      run: |
+        wget -q https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.8.2405/linux_dxc_2024_05_24.x86_64.tar.gz
+        tar -xzf linux_dxc_2024_05_24.x86_64.tar.gz
+        sudo cp bin/dxc /usr/local/bin/
+        sudo chmod +x /usr/local/bin/dxc
+    
+    - name: Configure CMake
+      run: |
+        cmake -B build -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DONATIVE=OFF \
+          -DCMAKE_C_FLAGS="-march=x86-64-v3 -mtune=generic" \
+          -DCMAKE_CXX_FLAGS="-march=x86-64-v3 -mtune=generic" \
+          -DFFMPEG=OFF \
+          -DBINKDEC=ON \
+          -DUSE_SYSTEM_ZLIB=OFF \
+          -DUSE_SYSTEM_RAPIDJSON=OFF \
+          -DUSE_VULKAN=ON \
+          -DUSE_DX12=OFF \
+          -DDOOM_CLASSIC=ON \
+          -DUSE_PRECOMPILED_HEADERS=ON \
+          -DCPU_OPTIMIZATION="-mmmx -msse -msse2 -msse3 -mssse3 -msse4.1 -msse4.2 -mavx -mavx2 -mfma -mbmi -mbmi2" \
+          neo
+    
+    - name: Build
+      run: |
+        cmake --build build --config Release
+    
+    - name: Package release
+      run: |
+        # Create release directory
+        mkdir -p RBDOOM-3-BFG-linux-x86_64
+        
+        # Copy executable
+        cp build/RBDoom3BFG RBDOOM-3-BFG-linux-x86_64/
+        chmod +x RBDOOM-3-BFG-linux-x86_64/RBDoom3BFG
+        
+        # Copy base directory (game data, configs, scripts)
+        cp -r base RBDOOM-3-BFG-linux-x86_64/
+        
+        # Remove debug files if any exist
+        find RBDOOM-3-BFG-linux-x86_64 -name "*.pdb" -delete 2>/dev/null || true
+        find RBDOOM-3-BFG-linux-x86_64 -name "*.map" -delete 2>/dev/null || true
+        find RBDOOM-3-BFG-linux-x86_64 -name "*.gch" -delete 2>/dev/null || true
+        
+        # Create archive
+        tar -czf RBDOOM-3-BFG-linux-x86_64.tar.gz RBDOOM-3-BFG-linux-x86_64
+    
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: RBDOOM-3-BFG-linux-x86_64
+        path: RBDOOM-3-BFG-linux-x86_64.tar.gz
+        retention-days: 30name: Build RBDOOM-3-BFG for Linux x86_64
 on:
   workflow_dispatch: {}
   push:
