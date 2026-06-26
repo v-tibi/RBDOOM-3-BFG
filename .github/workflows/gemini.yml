@@ -1,0 +1,75 @@
+name: Arch Linux Optimized Build
+
+on:
+  push:
+    branches: [ "**" ]
+  commit:
+    branches: [ "**" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+
+    steps:
+      - name: Update System and Install Build Dependencies
+        run: |
+          # Initialize pacman keyring and install packages needed for compilation
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm git cmake clang ninja ispc sdl2 openal ffmpeg vulkan-headers
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure CMake
+        run: |
+          mkdir build
+          cd build
+          
+          # Target your i5-8250U iGPU setup specifically (Kaby Lake Refresh microarchitecture)
+          # Forcing Clang (clang/clang++) fixes the linking errors common with newer GCC packages on Arch.
+          cmake ../neo \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang \
+            -DCMAKE_C_FLAGS="-march=kabylake -O3" \
+            -DCMAKE_CXX_FLAGS="-march=kabylake -O3" \
+            -DVULKAN=ON \
+            -DFFMPEG=ON \
+            -DOPENAL=ON \
+            -DCMAKE_INSTALL_PREFIX=../dist
+
+      - name: Build and Install Target
+        run: |
+          cd build
+          ninja
+          ninja install
+
+      - name: Package Engine Assets & Directory Structure
+        run: |
+          # Create a structured deployment folder mimicking the game directory setup
+          mkdir -p RBDOOM3-Arch-KabyLake/base
+          
+          # Copy the compiled binaries and engine configuration/generated files
+          if [ -d "dist" ]; then
+            cp -r dist/* RBDOOM3-Arch-KabyLake/
+          else
+            # Fallback if prefix installation didn't match project structure exactly
+            find build/ -maxdepth 1 -type f -executable -exec cp {} RBDOOM3-Arch-KabyLake/ \;
+          fi
+          
+          # Include crucial run-from-source directories if they exist in repo root
+          if [ -d "base/renderprogs" ]; then cp -r base/renderprogs RBDOOM3-Arch-KabyLake/base/; fi
+          if [ -d "base/renderprogs2" ]; then cp -r base/renderprogs2 RBDOOM3-Arch-KabyLake/base/; fi
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: RBDOOM3-Arch-KabyLake
+          path: RBDOOM3-Arch-KabyLake/
+          if-no-files-found: error
