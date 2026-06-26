@@ -26,15 +26,14 @@ jobs:
           mkdir build
           cd build
           
-          # Target your i5-8250U iGPU setup specifically (Kaby Lake Refresh microarchitecture)
-          # Forcing Clang (clang/clang++) fixes the linking errors common with newer GCC packages on Arch.
+          # Fixed: Switched from kabylake to skylake. Clang optimizes 8th-gen Kaby Lake R using the skylake target.
           cmake ../neo \
             -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_C_COMPILER=clang \
             -DCMAKE_CXX_COMPILER=clang \
-            -DCMAKE_C_FLAGS="-march=kabylake -O3" \
-            -DCMAKE_CXX_FLAGS="-march=kabylake -O3" \
+            -DCMAKE_C_FLAGS="-march=skylake -O3" \
+            -DCMAKE_CXX_FLAGS="-march=skylake -O3" \
             -DVULKAN=ON \
             -DFFMPEG=ON \
             -DOPENAL=ON \
@@ -49,23 +48,23 @@ jobs:
       - name: Package Engine Assets & Directory Structure
         run: |
           # Create a structured deployment folder mimicking the game directory setup
-          mkdir -p RBDOOM3-Arch-KabyLake/base
+          mkdir -p RBDOOM3-Arch-Skylake/base
           
           # Copy the compiled binaries and engine configuration/generated files
           if [ -d "dist" ]; then
-            cp -r dist/* RBDOOM3-Arch-KabyLake/
+            cp -r dist/* RBDOOM3-Arch-Skylake/
           else
             # Fallback if prefix installation didn't match project structure exactly
-            find build/ -maxdepth 1 -type f -executable -exec cp {} RBDOOM3-Arch-KabyLake/ \;
+            find build/ -maxdepth 1 -type f -executable -exec cp {} RBDOOM3-Arch-Skylake/ \;
           fi
           
           # Include crucial run-from-source directories if they exist in repo root
-          if [ -d "base/renderprogs" ]; then cp -r base/renderprogs RBDOOM3-Arch-KabyLake/base/; fi
-          if [ -d "base/renderprogs2" ]; then cp -r base/renderprogs2 RBDOOM3-Arch-KabyLake/base/; fi
+          if [ -d "base/renderprogs" ]; then cp -r base/renderprogs RBDOOM3-Arch-Skylake/base/; fi
+          if [ -d "base/renderprogs2" ]; then cp -r base/renderprogs2 RBDOOM3-Arch-Skylake/base/; fi
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: RBDOOM3-Arch-KabyLake
-          path: RBDOOM3-Arch-KabyLake/
+          name: RBDOOM3-Arch-Skylake
+          path: RBDOOM3-Arch-Skylake/
           if-no-files-found: error
