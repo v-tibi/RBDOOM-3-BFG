@@ -18,10 +18,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake git wget build-essential \
-            libsdl2-dev libopenal-dev libavcodec-dev libavformat-dev \
-            libavutil-dev libswscale-dev libvulkan-dev vulkan-validationlayers-dev \
-            libx11-dev libxrandr-dev libxi-dev libxcursor-dev libxinerama-dev \
-            libxss-dev libasound2-dev libsndfile1-dev zlib1g-dev ispc
+            libsdl2-dev libopenal-dev \
+            libavcodec-dev libavformat-dev libavutil-dev libswscale-dev \
+            libvulkan-dev vulkan-validationlayers \
+            libx11-dev libxrandr-dev libxi-dev libxcursor-dev \
+            libxinerama-dev libxss-dev \
+            libasound2-dev libsndfile1-dev zlib1g-dev ispc
       - name: Checkout
         uses: actions/checkout@v4
         with:
