@@ -45,8 +45,17 @@ jobs:
       run: |
         wget -q https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.8.2405/linux_dxc_2024_05_24.x86_64.tar.gz
         tar -xzf linux_dxc_2024_05_24.x86_64.tar.gz
+        # Copy binary
         sudo cp bin/dxc /usr/local/bin/
         sudo chmod +x /usr/local/bin/dxc
+        # Copy shared library
+        if [ -f lib/libdxcompiler.so ]; then
+          sudo cp lib/libdxcompiler.so /usr/local/lib/
+        elif [ -f bin/libdxcompiler.so ]; then
+          sudo cp bin/libdxcompiler.so /usr/local/lib/
+        fi
+        # Update library cache
+        sudo ldconfig
         dxc --version
     
     - name: Configure CMake
