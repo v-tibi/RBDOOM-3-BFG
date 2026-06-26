@@ -92,6 +92,13 @@ jobs:
         # Copy base directory (game data, configs, scripts)
         cp -r base RBDOOM-3-BFG-linux-x86_64/
         
+        # Convert language files to ASCII (remove non-ASCII characters)
+        # The engine requires strict ASCII for .lang files
+        find RBDOOM-3-BFG-linux-x86_64/base/strings -name "*.lang" -type f | while read file; do
+          echo "Converting $file to ASCII..."
+          iconv -f UTF-8 -t ASCII//TRANSLIT//IGNORE "$file" > "$file.tmp" && mv "$file.tmp" "$file"
+        done
+        
         # Remove debug files if any exist
         find RBDOOM-3-BFG-linux-x86_64 -name "*.pdb" -delete 2>/dev/null || true
         find RBDOOM-3-BFG-linux-x86_64 -name "*.map" -delete 2>/dev/null || true
