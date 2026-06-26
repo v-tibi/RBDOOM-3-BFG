@@ -46,7 +46,7 @@ jobs:
           chmod +x cmake-linux-release.sh
           ./cmake-linux-release.sh
           cd ../build
-          make -j$(nproc)
+          make -j1
 
       - name: Prepare artifacts
         run: cp build/RBDoom3BFG ./
